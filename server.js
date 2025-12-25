@@ -1,58 +1,61 @@
-require('dotenv').config(); // Load environment variables from .env
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
+const express = require("express");
+const mongoose = require("mongoose");
+const dotenv = require("dotenv");
+const cors = require("cors");
 
-// Import Route Handlers
-const authRoutes = require('./routes/auth');
-const productRoutes = require('./routes/products');
-const cartRoutes = require('./routes/cart');
+// Load environment variables from .env file
+dotenv.config();
 
 const app = express();
 
-// --- 1. Middleware Setup (Requirement 1) ---
-app.use(cors()); // Enable Cross-Origin Resource Sharing
-app.use(express.json()); // Essential: Parse incoming JSON request bodies
+// Middleware Setup
+// 1. CORS: Allows requests from your React frontend (e.g., http://localhost:5173)
+app.use(cors());
+// 2. Body Parser: Allows Express to read JSON data from the request body
+app.use(express.json());
 
-// --- 2. MongoDB Database Connection (Requirement 2) ---
-// Connects to local MongoDB Compass via URI in .env
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log("✅ MongoDB Connected Successfully to Compass"))
-    .catch(err => {
-        console.error("❌ MongoDB Connection Error:", err.message);
-        process.exit(1); // Stop server if database is not running
-    });
+// --- MongoDB Connection (50 marks) ---
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("MongoDB connected successfully.");
+  } catch (error) {
+    console.error("MongoDB connection failed:", error.message);
+    // Exit process with failure
+    process.exit(1);
+  }
+};
 
-// --- 3. API Route Registration (Requirement 1 & 4) ---
-// Authentication routes (Register/Login)
-app.use('/api', authRoutes);
+// Connect to the database
+connectDB();
 
-// Product routes (Public: GET /products, GET /products/:id)
-app.use('/api', productRoutes);
+// --- Import Routes ---
+const authRoutes = require("./routes/authRoutes");
+const productRoutes = require("./routes/productRoutes");
+const cartRoutes = require("./routes/cartRoutes");
 
-// Cart routes (Protected: POST, PUT, DELETE /cart)
-app.use('/api/cart', cartRoutes);
+// --- Define Routes (60 marks) ---
+app.use("/api/auth", authRoutes); // Routes for /register and /login
+app.use("/api/products", productRoutes); // Routes for product fetching
+app.use("/api/cart", cartRoutes); // Protected routes for cart CRUD
 
-// --- 4. Global Error Handling Middleware (Requirement 3) ---
-// This ensures that any error in the system returns a proper JSON response instead of crashing
+// --- Root Route for testing ---
+app.get("/", (req, res) => {
+  res.send("ShoppyGlobe Backend API is running...");
+});
+
+// --- API Error Handling (20 marks) ---
+// Global Error Handler for unhandled errors
 app.use((err, req, res, next) => {
-    console.error('Captured Error:', err.stack);
-    
-    // Default to 500 Internal Server Error if no status code is provided
-    const statusCode = err.statusCode || 500;
-    res.status(statusCode).json({
-        success: false,
-        message: err.message || "Internal Server Error",
-    });
+  console.error(err.stack);
+  res.status(err.statusCode || 500).json({
+    message: err.message || "Internal Server Error",
+    success: false,
+  });
 });
 
-// Handle 404 - Route Not Found
-app.use((req, res) => {
-    res.status(404).json({ message: "API Route not found" });
-});
-
-// --- 5. Server Initialization ---
 const PORT = process.env.PORT || 5000;
+
 app.listen(PORT, () => {
-    console.log(`🚀 ShoppyGlobe Backend running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
