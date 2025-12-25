@@ -1,52 +1,58 @@
-require('dotenv').config();
+require('dotenv').config(); // Load environment variables from .env
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 
-// Import Routes
+// Import Route Handlers
 const authRoutes = require('./routes/auth');
 const productRoutes = require('./routes/products');
 const cartRoutes = require('./routes/cart');
 
 const app = express();
 
-// 1. Middleware Setup (Requirement 1)
-app.use(cors());
-app.use(express.json()); // Parses incoming JSON requests
+// --- 1. Middleware Setup (Requirement 1) ---
+app.use(cors()); // Enable Cross-Origin Resource Sharing
+app.use(express.json()); // Essential: Parse incoming JSON request bodies
 
-// 2. MongoDB Connection (Requirement 2)
+// --- 2. MongoDB Database Connection (Requirement 2) ---
+// Connects to local MongoDB Compass via URI in .env
 mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("✅ MongoDB Connected Successfully to Compass"))
     .catch(err => {
         console.error("❌ MongoDB Connection Error:", err.message);
-        process.exit(1); // Exit process with failure
+        process.exit(1); // Stop server if database is not running
     });
 
-// 3. API Routes (Requirement 1 & 4)
-app.use('/api', authRoutes);     // Handles /register and /login
-app.use('/api', productRoutes);  // Handles GET /products and /products/:id
-app.use('/api/cart', cartRoutes); // Handles POST, PUT, DELETE /cart (Protected)
+// --- 3. API Route Registration (Requirement 1 & 4) ---
+// Authentication routes (Register/Login)
+app.use('/api', authRoutes);
 
-// 4. Global Error Handling Middleware (Requirement 3)
-// This catches any errors passed to next() in your routes
+// Product routes (Public: GET /products, GET /products/:id)
+app.use('/api', productRoutes);
+
+// Cart routes (Protected: POST, PUT, DELETE /cart)
+app.use('/api/cart', cartRoutes);
+
+// --- 4. Global Error Handling Middleware (Requirement 3) ---
+// This ensures that any error in the system returns a proper JSON response instead of crashing
 app.use((err, req, res, next) => {
-    console.error('Global Error Handler:', err.stack);
+    console.error('Captured Error:', err.stack);
     
+    // Default to 500 Internal Server Error if no status code is provided
     const statusCode = err.statusCode || 500;
     res.status(statusCode).json({
         success: false,
         message: err.message || "Internal Server Error",
-        // Only show stack trace in development
-        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
 });
 
-// 5. Handle 404 Routes
+// Handle 404 - Route Not Found
 app.use((req, res) => {
-    res.status(404).json({ message: "Route not found" });
+    res.status(404).json({ message: "API Route not found" });
 });
 
+// --- 5. Server Initialization ---
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`🚀 ShoppyGlobe Backend running on http://localhost:${PORT}`);
 });

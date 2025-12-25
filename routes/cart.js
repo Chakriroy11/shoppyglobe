@@ -2,15 +2,16 @@ const express = require('express');
 const router = express.Router();
 const Cart = require('../models/Cart');
 const Product = require('../models/Product');
-const auth = require('../middleware/auth');
+const auth = require('../middleware/auth'); // Protect cart routes
 
-// POST /cart - Add to cart with validation
+// POST /cart: Add product with validation
 router.post('/', auth, async (req, res) => {
     try {
         const { productId, quantity } = req.body;
-        // Check if product exists in MongoDB [Requirement 3]
+        
+        // Validation: Check if product ID exists in MongoDB
         const product = await Product.findById(productId);
-        if (!product) return res.status(404).json({ message: "Product does not exist" });
+        if (!product) return res.status(404).json({ message: "Product not found" });
 
         let cart = await Cart.findOne({ userId: req.user.id });
         if (!cart) {
@@ -21,7 +22,7 @@ router.post('/', auth, async (req, res) => {
         await cart.save();
         res.status(201).json(cart);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: "Cast to ObjectId failed! Use a valid ID from Compass." });
     }
 });
 
