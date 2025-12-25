@@ -1,18 +1,41 @@
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 
-module.exports = (req, res, next) => {
-    // Look for Bearer token in headers
-    const authHeader = req.header('Authorization');
-    const token = authHeader && authHeader.split(' ')[1];
+/**
+ * @function protect
+ * @description Middleware to protect routes by verifying the JWT token (60 Marks).
+ * Adds the authenticated user's ID to the request object (req.userId).
+ */
+const protect = (req, res, next) => {
+  // 1. Get token from header (usually 'Bearer TOKEN')
+  let token = req.header("Authorization");
 
-    if (!token) return res.status(401).json({ message: "Access denied. No token provided." });
+  if (token && token.startsWith("Bearer ")) {
+    // Remove 'Bearer ' prefix
+    token = token.split(" ")[1];
+  }
 
-    try {
-        // Verify token using the secret from .env
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = decoded;
-        next();
-    } catch (err) {
-        res.status(401).json({ message: "Invalid token" });
-    }
+  // 2. Check if token exists
+  if (!token) {
+    return res.status(401).json({
+      message: "Access denied. No token provided.",
+      success: false,
+    });
+  }
+
+  try {
+    // 3. Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // 4. Attach user ID to the request object
+    req.userId = decoded.id;
+    next();
+  } catch (error) {
+    // 5. Handle invalid token
+    return res.status(401).json({
+      message: "Invalid token.",
+      success: false,
+    });
+  }
 };
+
+module.exports = protect;
